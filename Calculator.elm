@@ -6,7 +6,8 @@ import Html.Events exposing (on, targetValue)
 import Signal exposing (Address)
 import StartApp.Simple as StartApp
 import String exposing (toFloat)
-
+import List exposing ( map, foldl, foldr )
+import Debug exposing ( log )
 -- MODEL
 
 type alias Model = String
@@ -38,10 +39,21 @@ stringToFloatOrZero string =
     |> Maybe.withDefault 0
 
 calculateStampDuty: Float -> Float
-calculateStampDuty value =
-    if | value > 125000 -> (value - 125000) * 0.2
-       | otherwise -> 0
+calculateStampDuty propertyValue =
+    let rates = [{threshold = 125000, rate = 0}
+                ,{threshold = 125000, rate = 0.02}
+                ,{threshold = 675000, rate = 0.05}
+                ,{threshold = 575000, rate = 0.10}
+                ,{threshold = 0, rate = 0.12}]
+    in
+        .stampDuty (foldl appendRate { remainingPropertyValue = propertyValue, stampDuty = 0 } rates)
 
+appendRate {threshold, rate} { remainingPropertyValue, stampDuty } =
+    log ("threshold: " ++ (toString threshold) ++ ", rate: " ++ (toString rate) ++ ", remainingPropertyValue: " ++ (toString remainingPropertyValue)) <|
+    let newRemainingPropertyValue = if (remainingPropertyValue - threshold) < 0 then 0 else (remainingPropertyValue - threshold)
+        amountEligableForStampDuty = if (threshold < remainingPropertyValue) then threshold else remainingPropertyValue
+    in
+        {remainingPropertyValue = newRemainingPropertyValue, stampDuty = stampDuty + (amountEligableForStampDuty * rate)}
 
 myStyle : Attribute
 myStyle =
