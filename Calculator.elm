@@ -38,22 +38,43 @@ stringToFloatOrZero string =
     |> Result.toMaybe 
     |> Maybe.withDefault 0
 
+
+type StampDutyBand = Remainder | Threshold Float
+
 calculateStampDuty: Float -> Float
 calculateStampDuty propertyValue =
-    let rates = [{threshold = 125000, rate = 0}
-                ,{threshold = 125000, rate = 0.02}
-                ,{threshold = 675000, rate = 0.05}
-                ,{threshold = 575000, rate = 0.10}
-                ,{threshold = 0, rate = 0.12}]
+    let rates = [{band = Threshold(125000.0), rate = 0}
+                ,{band = Threshold(125000.0), rate = 0.02}
+                ,{band = Threshold(675000.0), rate = 0.05}
+                ,{band = Threshold(575000.0), rate = 0.10}
+                ,{band = Remainder, rate = 0.12}]
     in
         .stampDuty (foldl appendRate { remainingPropertyValue = propertyValue, stampDuty = 0 } rates)
 
-appendRate {threshold, rate} { remainingPropertyValue, stampDuty } =
-    log ("threshold: " ++ (toString threshold) ++ ", rate: " ++ (toString rate) ++ ", remainingPropertyValue: " ++ (toString remainingPropertyValue)) <|
-    let newRemainingPropertyValue = if (remainingPropertyValue - threshold) < 0 then 0 else (remainingPropertyValue - threshold)
-        amountEligableForStampDuty = if (threshold < remainingPropertyValue) then threshold else remainingPropertyValue
+appendRate {band, rate} { remainingPropertyValue, stampDuty } =
+    log ("band: " ++ (toString band) ++ ", rate: " ++ (toString rate) ++ ", remainingPropertyValue: " ++ (toString remainingPropertyValue)) <|
+    let newRemainingPropertyValue = calculateRemainingPropertyValue band remainingPropertyValue
+        amountEligableForStampDuty = calculateAmountEligableForStampDuty band remainingPropertyValue
+        stampDutyForBand = (amountEligableForStampDuty * rate)
     in
-        {remainingPropertyValue = newRemainingPropertyValue, stampDuty = stampDuty + (amountEligableForStampDuty * rate)}
+        {remainingPropertyValue = newRemainingPropertyValue, stampDuty = stampDuty + stampDutyForBand}
+
+--calculateRemainingPropertyValue: StampDutyBand Float -> Float
+calculateRemainingPropertyValue band remainingPropertyValue =
+    case band of
+        Remainder ->
+            0
+        Threshold threshold ->
+            if (remainingPropertyValue - threshold) < 0 then 0 else (remainingPropertyValue - threshold)
+
+--calculateAmountEligableForStampDuty: StampDutyBand Float -> Float
+calculateAmountEligableForStampDuty band remainingPropertyValue =
+    case band of
+        Remainder ->
+            remainingPropertyValue
+        Threshold threshold ->
+            if (threshold < remainingPropertyValue) then threshold else remainingPropertyValue
+
 
 myStyle : Attribute
 myStyle =
