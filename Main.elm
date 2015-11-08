@@ -3,7 +3,7 @@ import StartApp.Simple exposing (start)
 
 main =
   start
-    { model = ""
+    { model = "350000"
     , update = update
     , view = view
     }
